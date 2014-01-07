@@ -5,8 +5,8 @@
 #define boardx 1280+8
 #define boardy 720+8
 using std::string;
-void introduction(), preparation(int board[][boardy], float&, float&, int&, float&), counting(float&, float&, int, float&), fruit(int board [][boardy], float, float, int&), movement(int board[][boardy], float&, float&, int), displaying(BITMAP*, int board[][boardy]), termination(BITMAP*);
-bool menu(), obstacle(int board[][boardy], float, float);
+void introduction(), preparation(int board[][boardy], float&, float&, int&, float&), counting(float&, float&, int, float&), fruit(int board [][boardy], float, float, int&), movement(int board[][boardy], float&, float&, int), displaying(BITMAP*, BITMAP*, int board[][boardy]), termination(BITMAP*, BITMAP*);
+bool menu(BITMAP*, BITMAP*), obstacle(int board[][boardy], float, float);
 int color(string), round(float);
 
 int main(){
@@ -15,16 +15,17 @@ int main(){
 	srand(time(NULL)); //setting a seed on time dependence
 	introduction(); //preparing the program
 	BITMAP* buffer=create_bitmap(boardx-8,boardy-8); //creating a buffer
-	while(menu()){ //displaying a menu till exit the game
+	BITMAP* graphics=load_bmp("graphics.bmp",default_palette); //creating a bitmap containing all the graphics
+	while(menu(buffer, graphics)){ //displaying a menu till exit the game
 		preparation(board, headx, heady, length, angle);
 		while(obstacle(board, headx, heady)){ //a game loop; checking if snake bumped
 			counting(headx, heady, length, angle);
 			fruit(board, headx, heady, length); //checking if snake ate fruit
 			movement(board, headx, heady,length);
-			displaying(buffer, board);
+			displaying(buffer, graphics, board);
 		}
 	}
-	termination(buffer); //finishing the program
+	termination(buffer, graphics); //finishing the program
 	return 0;
 }
 END_OF_MAIN();
@@ -34,6 +35,7 @@ void introduction(){ //preparing the program
 	set_color_depth(32);
 	set_gfx_mode(GFX_AUTODETECT_WINDOWED,boardx-8,boardy-8,0,0);
 	install_keyboard();
+	install_mouse();
 }
 
 void preparation(int board[boardx][boardy], float &headx, float &heady, int &length, float &angle){ //preparing the game
@@ -52,15 +54,36 @@ void preparation(int board[boardx][boardy], float &headx, float &heady, int &len
 	board[500][300]=1;
 }
 
-bool menu(){ //handling a menu
-	//allegro_message("wanna play? zero means no");
-	//int x=readkey();
-	//if(x==6960) return false;
-	//else return true;
+bool menu(BITMAP* buffer, BITMAP* graphics){ //handling a menu
+	show_mouse(screen);
 
-	allegro_message("wanna play? 1 means yes");
-	rest(2000);
-	if(key[KEY_1]) return true;
+	//copying the background
+	blit(graphics,buffer,0,0,0,0,600,600);
+	blit(graphics,buffer,0,0,600,0,600,600);
+	blit(graphics,buffer,0,0,900,0,600,600);
+	blit(graphics,buffer,0,0,0,600,600,600);
+	blit(graphics,buffer,0,0,600,600,600,600);
+	blit(graphics,buffer,0,0,900,600,600,600);
+
+	//copying the text
+	masked_blit(graphics,buffer,600,0,515,100,250,100);
+	masked_blit(graphics,buffer,600,100,540,250,200,100);
+
+	//displaying everything
+	blit(buffer,screen,0,0,0,0,1280,720);
+
+	while(true){
+		if(mouse_b==1){
+			if(mouse_x>=515 && mouse_x<=765 && mouse_y>=100 && mouse_y<=200){
+				show_mouse(NULL);
+				return true;
+			}
+			if(mouse_x>=540 && mouse_x<=740 && mouse_y>=250 && mouse_y<=350){
+				show_mouse(NULL);
+				return false;
+			}
+		}
+	}
 	return false;
 }
 
@@ -94,7 +117,7 @@ void fruit(int board[boardx][boardy], float headx, float heady, int &length){
 }
 
 void movement(int board[boardx][boardy], float &headx, float &heady, int length){
-	//fixing the new postion on the board
+	//fixing the new position on the board
 	board[round(headx)][round(heady)]=length+1;
 	for(int y=4;y<boardy-4;++y)
 		for(int x=4;x<boardx-4;++x)
@@ -108,16 +131,23 @@ int round(float x){
 	return floor(x+0.5);
 }
 
-void displaying(BITMAP* buffer, int board[boardx][boardy]){
-	clear_to_color(buffer,color("bg")); //drawing the background
+void displaying(BITMAP* buffer, BITMAP* graphics, int board[boardx][boardy]){
+	//drawing the background
+	blit(graphics,buffer,0,0,0,0,600,600);
+	blit(graphics,buffer,0,0,600,0,600,600);
+	blit(graphics,buffer,0,0,900,0,600,600);
+	blit(graphics,buffer,0,0,0,600,600,600);
+	blit(graphics,buffer,0,0,600,600,600,600);
+	blit(graphics,buffer,0,0,900,600,600,600);
+
 	for(int y=4;y<boardy-4;++y){
 		for(int x=4;x<boardx-4;++x){
 			if(board[x][y]>=10) //drawing the snake
-				circlefill(buffer,x-4,y-4,4,color("snake"));
+				masked_blit(graphics,buffer,620,200,x-4,y-4,8,8);
 			if(board[x][y]==1) //drawing the fruit
-				circlefill(buffer,x-4,y-4,4,color("fruit"));
+				masked_blit(graphics,buffer,610,200,x-4,y-4,8,8);
 			if(board[x][y]==2) //drawing the obstacles
-				circlefill(buffer,x-4,y-4,4,color("obstacle"));
+				masked_blit(graphics,buffer,600,200,x-4,y-4,8,8);
 		}
 	}
 	blit(buffer,screen,0,0,0,0,boardx-8,boardy-8); //copying the buffer to the screen; actual displaying
@@ -143,7 +173,8 @@ bool obstacle(int board[boardx][boardy], float headx, float heady){
 	return true;
 }
 
-void termination(BITMAP* buffer){ //finishes the program
+void termination(BITMAP* buffer, BITMAP* graphics){ //finishes the program
 	destroy_bitmap(buffer);
+	destroy_bitmap(graphics);
 	allegro_exit();
 }
